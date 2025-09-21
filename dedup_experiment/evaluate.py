@@ -77,6 +77,15 @@ def evaluate_perplexity(model, cfg: ExperimentConfig, val_chunks: List[ChunkReco
     return math.exp(avg_loss)
 
 
+def _load_dataset(name: str, *args, **kwargs):
+    kwargs.setdefault("trust_remote_code", True)
+    try:
+        return load_dataset(name, *args, **kwargs)
+    except TypeError:
+        kwargs.pop("trust_remote_code", None)
+        return load_dataset(name, *args, **kwargs)
+
+
 def _token_log_prob(model, tokenizer, context: str, continuation: str, device: torch.device, block_size: int) -> float:
     prompt = context
     if continuation:
@@ -101,7 +110,7 @@ def _token_log_prob(model, tokenizer, context: str, continuation: str, device: t
 
 def evaluate_lambada(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    dataset = load_dataset("EleutherAI/lambada_openai", split="test")
+    dataset = _load_dataset("EleutherAI/lambada_openai", split="test")
     limit = min(max_samples, len(dataset)) if max_samples > 0 else len(dataset)
     correct = 0
     evaluated = 0
@@ -131,7 +140,7 @@ def evaluate_lambada(model, tokenizer, cfg: ExperimentConfig, max_samples: int) 
 
 def evaluate_piqa(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    ds = load_dataset("piqa", split="validation")
+    ds = _load_dataset("piqa", split="validation")
     total = min(max_samples, len(ds))
     correct = 0
     for idx in range(total):
@@ -149,7 +158,7 @@ def evaluate_piqa(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> 
 
 def evaluate_hellaswag(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    ds = load_dataset("hellaswag", split="validation")
+    ds = _load_dataset("hellaswag", split="validation")
     total = min(max_samples, len(ds))
     correct = 0
     for idx in range(total):
