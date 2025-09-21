@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -94,7 +95,7 @@ def train_language_model(
         weight_decay=cfg.training.weight_decay,
     )
     use_scaler = device.type == "cuda" and cfg.training.precision in {"fp16", "bf16"}
-    scaler = torch.amp.GradScaler(device_type=device.type, enabled=use_scaler) if use_scaler else None
+    scaler = torch.cuda.amp.GradScaler(enabled=True) if use_scaler else None
 
     history: List[TrainingHistoryEntry] = []
     total_tokens_processed = 0
@@ -114,16 +115,17 @@ def train_language_model(
 
         model.train()
         optimizer.zero_grad(set_to_none=True)
-        autocast_kwargs = {"device_type": device.type, "enabled": autocast_dtype is not None}
         if autocast_dtype is not None:
-            autocast_kwargs["dtype"] = autocast_dtype
-        with torch.amp.autocast(**autocast_kwargs):
+            autocast_ctx = torch.autocast(device_type=device.type, dtype=autocast_dtype)
+        else:
+            autocast_ctx = nullcontext()
+        with autocast_ctx:
             x, y = _get_batch(tokens_tensor, cfg.training.block_size, cfg.training.batch_size, device)
             logits, loss = model(x, y)
         if loss is None:
             raise RuntimeError("Loss should not be None during training")
 
-        if scaler is not None and scaler.is_enabled():
+        if scaler is not None:
             scaler.scale(loss).backward()
             if cfg.training.grad_clip > 0:
                 scaler.unscale_(optimizer)
