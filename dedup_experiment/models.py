@@ -6,6 +6,7 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .config import TrainingConfig
 
@@ -53,7 +54,7 @@ class MLP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.fc(x)
-        x = torch.gelu(x)
+        x = F.gelu(x)
         x = self.proj(x)
         x = self.drop(x)
         return x
