@@ -79,13 +79,19 @@ def evaluate_perplexity(model, cfg: ExperimentConfig, val_chunks: List[ChunkReco
     return math.exp(avg_loss)
 
 
-def _load_dataset(name: str, *args, **kwargs):
+def _load_dataset(name: str, *args, allow_failure: bool = False, **kwargs):
     kwargs.setdefault("trust_remote_code", True)
     try:
         return load_dataset(name, *args, **kwargs)
-    except (TypeError, UnicodeDecodeError, URLError, OSError):
+    except (TypeError, UnicodeDecodeError, URLError, OSError, ValueError) as exc:
         kwargs.pop("trust_remote_code", None)
-        return load_dataset(name, *args, **kwargs)
+        try:
+            return load_dataset(name, *args, **kwargs)
+        except Exception as inner_exc:
+            if not allow_failure:
+                raise
+            logger.warning("Failed to load dataset %s: %s | %s", name, exc, inner_exc)
+            return None
 
 
 def _token_log_prob(model, tokenizer, context: str, continuation: str, device: torch.device, block_size: int) -> float:
@@ -112,7 +118,10 @@ def _token_log_prob(model, tokenizer, context: str, continuation: str, device: t
 
 def evaluate_lambada(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    dataset = _load_dataset("EleutherAI/lambada_openai", split="test")
+    dataset = _load_dataset("EleutherAI/lambada_openai", split="test", allow_failure=True)
+    if dataset is None:
+        logger.warning("Skipping lambada evaluation because dataset could not be loaded")
+        return float("nan")
     limit = min(max_samples, len(dataset)) if max_samples > 0 else len(dataset)
     correct = 0
     evaluated = 0
@@ -142,7 +151,10 @@ def evaluate_lambada(model, tokenizer, cfg: ExperimentConfig, max_samples: int) 
 
 def evaluate_piqa(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    ds = _load_dataset("piqa", split="validation")
+    ds = _load_dataset("piqa", split="validation", allow_failure=True)
+    if ds is None:
+        logger.warning("Skipping PIQA evaluation because dataset could not be loaded")
+        return float("nan")
     total = min(max_samples, len(ds))
     correct = 0
     for idx in range(total):
@@ -160,7 +172,10 @@ def evaluate_piqa(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> 
 
 def evaluate_hellaswag(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    ds = _load_dataset("hellaswag", split="validation")
+    ds = _load_dataset("hellaswag", split="validation", allow_failure=True)
+    if ds is None:
+        logger.warning("Skipping HellaSwag evaluation because dataset could not be loaded")
+        return float("nan")
     total = min(max_samples, len(ds))
     correct = 0
     for idx in range(total):
