@@ -101,7 +101,7 @@ def _token_log_prob(model, tokenizer, context: str, continuation: str, device: t
 
 def evaluate_lambada(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    dataset = load_dataset("EleutherAI/lambada", "en", split="validation")
+    dataset = load_dataset("EleutherAI/lambada_openai", split="test")
     limit = min(max_samples, len(dataset)) if max_samples > 0 else len(dataset)
     correct = 0
     evaluated = 0
