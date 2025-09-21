@@ -13,9 +13,9 @@ dataset:
   text_field: text
   max_documents: 200
   streaming: true
-  train_fraction: 0.98
-  val_fraction: 0.01
-  test_fraction: 0.01
+  train_fraction: 0.95
+  val_fraction: 0.025
+  test_fraction: 0.025
   shuffle_seed: 13
   shuffle_buffer: 2000
 
@@ -41,7 +41,7 @@ training:
   n_head: 4
   n_embd: 256
   dropout: 0.1
-  lr: 0.0003
+  lr: 0.0001
   weight_decay: 0.1
   betas: [0.9, 0.95]
   grad_clip: 1.0
@@ -50,7 +50,7 @@ training:
   warmup_steps: 20
   log_interval: 20
   device: auto
-  precision: bf16
+  precision: fp32
   max_train_tokens: 200000
   save_checkpoints: false
 
