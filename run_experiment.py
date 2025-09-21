@@ -13,6 +13,9 @@ from typing import Dict, List
 import numpy as np
 import torch
 
+# Ensure Hugging Face datasets can execute custom loaders without prompting.
+os.environ.setdefault("HF_DATASETS_TRUST_REMOTE_CODE", "1")
+
 from dedup_experiment.canary import CanaryStore, generate_canaries, insert_canaries
 from dedup_experiment.config import ExperimentConfig, RunConfig, load_config
 from dedup_experiment.data import SplitChunks, chunk_stats, load_and_chunk
