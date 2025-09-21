@@ -48,7 +48,7 @@ Outputs land under `outputs/`:
 
 All knobs live in [`configs/default.yaml`](configs/default.yaml). Key sections:
 
-- `dataset`: Hugging Face dataset path, subset, split, number of documents to sample, and stream/buffer options. The default keeps a small `sample` slice but widens val/test fractions so perplexity stays finite even in smoke tests.
+- `dataset`: Hugging Face dataset path, subset, split, number of documents to sample, and stream/buffer options. Defaults now stream the entire `sample` split (`max_documents: null`) and allocate 10% of docs to val/test combined so perplexity has enough tokens to be well-behaved.
 - `dedup`: chunk length/stride, normalization, MinHash parameters, and whether to cross-dedup train vs val/test.
 - `training`: model depth/width, learning-rate schedule, precision, batch size, max steps, and optional token budget cap. Defaults now run in fp32 with a gentler learning rate so the tiny demo run avoids `inf`/`nan` loss spikes.
 - `evaluation`: batch sizes, max val tokens, downstream task sample counts, and canary decoding length.
