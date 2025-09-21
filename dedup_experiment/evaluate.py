@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 from datasets import load_dataset
+from huggingface_hub import hf_hub_download
 
 from urllib.error import URLError
 
@@ -94,6 +95,25 @@ def _load_dataset(name: str, *args, allow_failure: bool = False, **kwargs):
             return None
 
 
+def _load_piqa_from_hub() -> Optional[List[Dict[str, str]]]:
+    try:
+        path = hf_hub_download("piqa", "validation.jsonl")
+    except Exception as exc:
+        logger.warning("PIQA fallback download failed: %s", exc)
+        return None
+    records: List[Dict[str, str]] = []
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                records.append(json.loads(line))
+    except Exception as exc:
+        logger.warning("PIQA fallback parse failed: %s", exc)
+        return None
+    return records
+
+
 def _token_log_prob(model, tokenizer, context: str, continuation: str, device: torch.device, block_size: int) -> float:
     prompt = context
     if continuation:
@@ -152,20 +172,30 @@ def evaluate_lambada(model, tokenizer, cfg: ExperimentConfig, max_samples: int) 
 def evaluate_piqa(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
     ds = _load_dataset("piqa", split="validation", allow_failure=True)
+    get_example = None
+    available = 0
     if ds is None:
-        logger.warning("Skipping PIQA evaluation because dataset could not be loaded")
-        return float("nan")
-    total = min(max_samples, len(ds))
+        fallback = _load_piqa_from_hub()
+        if fallback is None:
+            logger.warning("Skipping PIQA evaluation because dataset could not be loaded")
+            return float("nan")
+        available = len(fallback)
+        get_example = lambda idx: fallback[idx]
+    else:
+        available = len(ds)
+        get_example = lambda idx: ds[int(idx)]
+
+    total = min(max_samples, available) if max_samples > 0 else available
     correct = 0
     for idx in range(total):
-        row = ds[idx]
+        row = get_example(idx)
         prompt = row["goal"].strip()
         sol1 = row["sol1"].strip()
         sol2 = row["sol2"].strip()
         score1 = _token_log_prob(model, tokenizer, prompt + " ", " " + sol1, device, cfg.training.block_size)
         score2 = _token_log_prob(model, tokenizer, prompt + " ", " " + sol2, device, cfg.training.block_size)
         pred = 0 if score1 >= score2 else 1
-        if pred == row["label"]:
+        if pred == int(row["label"]):
             correct += 1
     return correct / max(1, total)
 

@@ -125,6 +125,14 @@ def train_language_model(
         if loss is None:
             raise RuntimeError("Loss should not be None during training")
 
+        if not torch.isfinite(loss).item():
+            logger.error(
+                "%s encountered non-finite loss at step %d; aborting run",
+                run_name,
+                step + 1,
+            )
+            break
+
         if scaler is not None:
             scaler.scale(loss).backward()
             if cfg.training.grad_clip > 0:

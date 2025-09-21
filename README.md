@@ -50,7 +50,7 @@ All knobs live in [`configs/default.yaml`](configs/default.yaml). Key sections:
 
 - `dataset`: Hugging Face dataset path, subset, split, number of documents to sample, and stream/buffer options. Defaults stream up to 200k docs from the `sample` split and allocate 10% of docs to val/test combined so perplexity has enough tokens to be well-behaved.
 - `dedup`: chunk length/stride, normalization, MinHash parameters, and whether to cross-dedup train vs val/test.
-- `training`: model depth/width, learning-rate schedule, precision, batch size, max steps, and optional token budget cap. Defaults now run in fp32 with a gentler learning rate so the tiny demo run avoids `inf`/`nan` loss spikes.
+- `training`: model depth/width, learning-rate schedule, precision, batch size, max steps, and optional token budget cap. Defaults now run in fp32 with a 5e-5 peak LR and smaller batch size so the demo stays numerically stable.
 - `evaluation`: batch sizes, max val tokens, downstream task sample counts, and canary decoding length.
 - `runs`: the dedup recipes to execute (baseline/exact/near by default). Add/edit blocks here to try different Jaccard thresholds.
 
@@ -77,7 +77,7 @@ You can also set `training.device: cpu` for force-CPU smoke tests.
 ## Notes & tips
 
 - **HF auth**: the runner reads `HF_TOKEN` (or `HUGGING_FACE_HUB_TOKEN`). Make sure it has dataset access.
-- **HF remote code**: the script automatically sets `HF_DATASETS_TRUST_REMOTE_CODE=1` so dataset builders that rely on custom scripts (e.g., RedPajama, PIQA) load without prompting.
+- **HF remote code**: the script automatically sets `HF_DATASETS_TRUST_REMOTE_CODE=1` so dataset builders that rely on custom scripts load without prompting. PIQA also has an explicit fallback that streams the validation JSONL directly if the Hub loader misbehaves on Colab.
 - **Custom datasets**: point `dataset.name/subset/text_field` at any Hugging Face text set. Streaming keeps memory usage small.
 - **Logging**: monitor training in real time via the CLI logs. Each run reports loss, LR, and tokens/sec every `log_interval` steps.
 - **Extending**: add more dedup recipes by appending to `runs` or tweak evaluation by editing the `evaluation.downstream_tasks` map.
