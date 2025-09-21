@@ -76,14 +76,32 @@ def load_documents(cfg: DatasetConfig) -> List[str]:
         dataset = dataset.shuffle(seed=cfg.shuffle_seed)
     docs: List[str] = []
     for item in dataset:
-        text = item.get(cfg.text_field)
+        text = item.get(cfg.text_field) if cfg.text_field else None
+        if not text:
+            # Try common fallbacks used by public corpora.
+            for candidate in [field for field in (cfg.text_field, "raw_content", "text") if field]:
+                candidate_text = item.get(candidate)
+                if isinstance(candidate_text, str) and candidate_text.strip():
+                    text = candidate_text
+                    break
+        if not text:
+            # Last resort: pick the first non-empty string field if present.
+            for value in item.values():
+                if isinstance(value, str) and value.strip():
+                    text = value
+                    break
         if not text:
             continue
         docs.append(text)
         if cfg.max_documents and len(docs) >= cfg.max_documents:
             break
     if not docs:
-        raise RuntimeError("Failed to load any documents from dataset")
+        hint = (
+            "No documents were yielded. Check that you exported HF_TOKEN and have "
+            "accepted any gating on togethercomputer/RedPajama-Data-V2, or point "
+            "dataset.name at an accessible subset."
+        )
+        raise RuntimeError(f"Failed to load any documents from dataset. {hint}")
     logger.info("Loaded %d documents", len(docs))
     return docs
 
