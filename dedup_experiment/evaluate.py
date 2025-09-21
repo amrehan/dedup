@@ -11,6 +11,8 @@ from typing import Dict, List, Optional, Tuple
 import torch
 from datasets import load_dataset
 
+from urllib.error import URLError
+
 from .canary import CanaryStore
 from .config import ExperimentConfig
 from .data import ChunkRecord
@@ -81,7 +83,7 @@ def _load_dataset(name: str, *args, **kwargs):
     kwargs.setdefault("trust_remote_code", True)
     try:
         return load_dataset(name, *args, **kwargs)
-    except TypeError:
+    except (TypeError, UnicodeDecodeError, URLError, OSError):
         kwargs.pop("trust_remote_code", None)
         return load_dataset(name, *args, **kwargs)
 
