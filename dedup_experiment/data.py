@@ -43,10 +43,29 @@ def get_hf_token() -> Optional[str]:
 def load_documents(cfg: DatasetConfig) -> List[str]:
     token = get_hf_token()
     logger.info("Loading %s (subset=%s, split=%s)", cfg.name, cfg.subset, cfg.split)
-    kwargs = {"use_auth_token": token} if token else {}
+    kwargs = {}
+    if token:
+        kwargs["token"] = token
     if cfg.local_cache_dir:
         kwargs["cache_dir"] = cfg.local_cache_dir
-    dataset = load_dataset(cfg.name, cfg.subset, split=cfg.split, streaming=cfg.streaming, **kwargs)
+    try:
+        dataset = load_dataset(
+            cfg.name,
+            cfg.subset,
+            split=cfg.split,
+            streaming=cfg.streaming,
+            trust_remote_code=True,
+            **kwargs,
+        )
+    except TypeError:
+        logger.warning("datasets version does not accept trust_remote_code; retrying without it")
+        dataset = load_dataset(
+            cfg.name,
+            cfg.subset,
+            split=cfg.split,
+            streaming=cfg.streaming,
+            **kwargs,
+        )
     if cfg.streaming:
         if not isinstance(dataset, IterableDataset):
             raise ValueError("Expected IterableDataset when streaming=True")
