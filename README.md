@@ -74,6 +74,23 @@ training:
 
 You can also set `training.device: cpu` for force-CPU smoke tests.
 
+### Scaling up
+
+For deeper runs, start from `configs/full_sample10b.yaml`:
+
+```bash
+python run_experiment.py --config configs/full_sample10b.yaml --output outputs/full_run
+```
+
+Key differences vs. the smoke test:
+
+- Streams the `sample-10B` subset (≈10B tokens) with 96/2/2 train/val/test split.
+- Uses 1,024-token chunking and ablates MinHash thresholds of 0.80 / 0.85 / 0.90.
+- Trains an 8-layer GPT (dmodel=512, bf16) for 16k steps at batch size 64 (≈500M tokens).
+- Expands evaluation to 1k PIQA/HellaSwag prompts and 500 Lambada samples.
+
+Adjust `max_train_tokens`, `batch_size`, or `max_steps` to fit your compute budget, and expect the full run to require multiple A100-class GPUs.
+
 ## Notes & tips
 
 - **HF auth**: the runner reads `HF_TOKEN` (or `HUGGING_FACE_HUB_TOKEN`). Make sure it has dataset access.

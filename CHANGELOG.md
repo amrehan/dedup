@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-09-22
+### Added
+- `configs/full_sample10b.yaml` for scaling experiments on the RedPajama sample-10B split, including larger chunking, multiple MinHash thresholds, and checkpointed 8-layer GPT training. (#0e8a227)
+- README instructions for launching and tuning the full run. (#0e8a227)
+
 ## [0.3.0] - 2025-09-22
 ### Added
 - Automatically opt into Hugging Face remote-code execution inside `run_experiment.py` so datasets that ship custom loaders work without prompts. (#08847a6)
@@ -41,4 +46,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Reverted the early attempt to force remote-code execution while the pinning strategy was finalised. (#f0dd4a9)
-
