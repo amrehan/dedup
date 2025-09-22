@@ -96,28 +96,51 @@ def _load_dataset(name: str, *args, allow_failure: bool = False, **kwargs):
 
 
 def _load_piqa_from_hub() -> Optional[List[Dict[str, str]]]:
+    """Fallback loader for PIQA when the default script fails on Colab.
+
+    Uses a preformatted Parquet dump hosted at `ivanpanshin/piqa_qa_formatted`.
+    Each row contains a single instruction-style string; we extract the goal,
+    solutions, and label so the downstream evaluation code can remain the same.
+    """
+
     try:
-        token = get_hf_token()
-        path = hf_hub_download(
-            "ybisk/piqa",
-            "dev.jsonl",
-            repo_type="dataset",
-            token=token,
+        ds = load_dataset("ivanpanshin/piqa_qa_formatted", split="validation")
+    except Exception as exc:
+        logger.warning("PIQA fallback dataset failed to load: %s", exc)
+        return None
+
+    extracted: List[Dict[str, str]] = []
+    for row in ds:
+        text = row.get("text", "")
+        if "### Assistant:" not in text:
+            continue
+        prompt, assistant = text.split("### Assistant:", 1)
+        assistant = assistant.strip()
+        try:
+            label = int(assistant[:1])
+        except ValueError:
+            continue
+        marker = "You need to reach the goal"
+        if marker not in prompt:
+            continue
+        try:
+            goal_part = prompt.split(marker, 1)[1]
+            goal_text, remainder = goal_part.split("The first solution is", 1)
+            sol1_text, remainder = remainder.split("The second solution is", 1)
+            sol2_text, _ = remainder.split("Output", 1)
+        except ValueError:
+            continue
+        extracted.append(
+            {
+                "goal": goal_text.strip(),
+                "sol1": sol1_text.strip().rstrip("."),
+                "sol2": sol2_text.strip().rstrip("."),
+                "label": label,
+            }
         )
-    except Exception as exc:
-        logger.warning("PIQA fallback download failed: %s", exc)
+    if not extracted:
         return None
-    records: List[Dict[str, str]] = []
-    try:
-        with open(path, "r", encoding="utf-8") as handle:
-            for line in handle:
-                if not line.strip():
-                    continue
-                records.append(json.loads(line))
-    except Exception as exc:
-        logger.warning("PIQA fallback parse failed: %s", exc)
-        return None
-    return records
+    return extracted
 
 
 def _token_log_prob(model, tokenizer, context: str, continuation: str, device: torch.device, block_size: int) -> float:
