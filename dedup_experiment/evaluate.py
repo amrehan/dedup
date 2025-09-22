@@ -16,7 +16,7 @@ from urllib.error import URLError
 
 from .canary import CanaryStore
 from .config import ExperimentConfig
-from .data import ChunkRecord
+from .data import ChunkRecord, get_hf_token
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,13 @@ def _load_dataset(name: str, *args, allow_failure: bool = False, **kwargs):
 
 def _load_piqa_from_hub() -> Optional[List[Dict[str, str]]]:
     try:
-        path = hf_hub_download("piqa", "validation.jsonl")
+        token = get_hf_token()
+        path = hf_hub_download(
+            "ybisk/piqa",
+            "dev.jsonl",
+            repo_type="dataset",
+            token=token,
+        )
     except Exception as exc:
         logger.warning("PIQA fallback download failed: %s", exc)
         return None
