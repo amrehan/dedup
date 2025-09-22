@@ -200,24 +200,16 @@ def evaluate_lambada(model, tokenizer, cfg: ExperimentConfig, max_samples: int) 
 
 def evaluate_piqa(model, tokenizer, cfg: ExperimentConfig, max_samples: int) -> float:
     device = next(model.parameters()).device
-    ds = _load_dataset("piqa", split="validation", allow_failure=True)
-    get_example = None
-    available = 0
-    if ds is None:
-        fallback = _load_piqa_from_hub()
-        if fallback is None:
-            logger.warning("Skipping PIQA evaluation because dataset could not be loaded")
-            return float("nan")
-        available = len(fallback)
-        get_example = lambda idx: fallback[idx]
-    else:
-        available = len(ds)
-        get_example = lambda idx: ds[int(idx)]
+    # The upstream loader often fails in Colab; go straight to the fallback
+    examples = _load_piqa_from_hub()
+    if not examples:
+        logger.warning("Skipping PIQA evaluation because dataset could not be loaded")
+        return float("nan")
 
-    total = min(max_samples, available) if max_samples > 0 else available
+    total = min(max_samples, len(examples)) if max_samples > 0 else len(examples)
     correct = 0
     for idx in range(total):
-        row = get_example(idx)
+        row = examples[idx]
         prompt = row["goal"].strip()
         sol1 = row["sol1"].strip()
         sol2 = row["sol2"].strip()

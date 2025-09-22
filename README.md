@@ -77,7 +77,7 @@ You can also set `training.device: cpu` for force-CPU smoke tests.
 ## Notes & tips
 
 - **HF auth**: the runner reads `HF_TOKEN` (or `HUGGING_FACE_HUB_TOKEN`). Make sure it has dataset access.
-- **HF remote code**: the script automatically sets `HF_DATASETS_TRUST_REMOTE_CODE=1` so dataset builders that rely on custom scripts load without prompting. If PIQA’s loader breaks in Colab, we fall back to the Parquet dump at `ivanpanshin/piqa_qa_formatted` and parse it on the fly.
+- **HF remote code**: the script automatically sets `HF_DATASETS_TRUST_REMOTE_CODE=1` so dataset builders that rely on custom scripts load without prompting. PIQA is always sourced from the Parquet dump at `ivanpanshin/piqa_qa_formatted`, since the original loader is brittle on Colab.
 - **Custom datasets**: point `dataset.name/subset/text_field` at any Hugging Face text set. Streaming keeps memory usage small.
 - **Logging**: monitor training in real time via the CLI logs. Each run reports loss, LR, and tokens/sec every `log_interval` steps.
 - **Extending**: add more dedup recipes by appending to `runs` or tweak evaluation by editing the `evaluation.downstream_tasks` map.
