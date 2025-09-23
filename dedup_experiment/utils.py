@@ -65,5 +65,12 @@ def shingle_text(text: str, size: int) -> List[int]:
     tokens = text.split()
     if len(tokens) < size:
         return []
-    shingles = [" ".join(tokens[i : i + size]) for i in range(len(tokens) - size + 1)]
-    return [hash(sh) for sh in shingles]
+    seen = set()
+    shingles: List[int] = []
+    for i in range(len(tokens) - size + 1):
+        sh = " ".join(tokens[i : i + size])
+        h = hash(sh)
+        if h not in seen:
+            seen.add(h)
+            shingles.append(h)
+    return shingles

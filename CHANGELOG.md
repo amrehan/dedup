@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ChunkShardDataset` iterable loader and optional streaming support in the trainer so we can iterate over shard files without materialising entire corpora.
 - Disk-backed dedup pipeline (`dedup_experiment/dedup_stream.py`) and `tools/run_dedup.py` for generating drop lists from chunk metadata.
 
+### Fixed
+- Ensure streaming chunker records shingles per chunk and flushes metadata correctly so disk-backed dedup no longer re-materialises documents.
+- Stream MinHash signatures during near-dedup to cut peak memory when generating drop lists.
+
 ## [0.3.1] - 2025-09-22
 ### Added
 - `configs/full_sample10b.yaml` for scaling experiments on the RedPajama sample-10B split, including larger chunking, multiple MinHash thresholds, and checkpointed 8-layer GPT training. (#0e8a227)

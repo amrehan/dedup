@@ -59,11 +59,12 @@ class ChunkShardWriter:
             value -= 2**64
         return value
 
-    def add_chunk(self, tokens: List[int], doc_id: int, normalized_text: str) -> None:
+    def add_chunk(self, tokens: List[int], doc_id: int, normalized_text: str, shingles: Optional[List[int]] = None) -> None:
         self._buffer_tokens.append(tokens)
         self._buffer_lengths.append(len(tokens))
         self._buffer_doc_ids.append(doc_id)
         self._buffer_hashes.append(self._hash_text(normalized_text))
+        self._buffer_shingles.append(shingles or [])
         if len(self._buffer_tokens) >= self.shard_size:
             self._flush()
 
@@ -169,8 +170,7 @@ def stream_and_chunk(cfg: ExperimentConfig, output_dir: str, shard_size: int = 1
                 continue
             normalized_chunk = normalize_text(tokenizer.decode(chunk))
             shingles = shingle_text(normalized_chunk, cfg.dedup.near.shingle_size)
-            writer._buffer_shingles.append(shingles)
-            writer.add_chunk(chunk, doc_id=idx, normalized_text=normalized_chunk)
+            writer.add_chunk(chunk, doc_id=idx, normalized_text=normalized_chunk, shingles=shingles)
             chunk_tokens_count += len(chunk)
     manifest = writer.finalize()
     manifest["chunk_tokens"] = chunk_tokens_count
