@@ -76,17 +76,26 @@ def _cosine_lr(step: int, cfg: TrainingConfig) -> float:
 
 def train_language_model(
     run_name: str,
-    train_chunks: List[ChunkRecord],
+    train_chunks: Optional[List[ChunkRecord]],
     cfg: ExperimentConfig,
     tokenizer_vocab_size: int,
     eos_token_id: Optional[int],
     output_dir: Path,
+    cycling_loader=None,
+    device: Optional[torch.device] = None,
 ) -> TrainingOutputs:
-    device = _select_device(cfg.training.device)
+    device = device or _select_device(cfg.training.device)
     logger.info("Training %s on %s", run_name, device)
 
-    tokens_tensor = _make_tensor(train_chunks, eos_token_id, cfg.training.max_train_tokens).to(device)
-    train_tokens = len(tokens_tensor)
+    tokens_tensor: Optional[torch.Tensor] = None
+    if cycling_loader is None:
+        if train_chunks is None:
+            raise ValueError("train_chunks must be provided when cycling_loader is None")
+        tokens_tensor = _make_tensor(train_chunks, eos_token_id, cfg.training.max_train_tokens).to(device)
+        train_tokens = len(tokens_tensor)
+    else:
+        train_tokens = 0
+
     model = create_model(cfg.training, vocab_size=tokenizer_vocab_size).to(device)
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -120,7 +129,16 @@ def train_language_model(
         else:
             autocast_ctx = nullcontext()
         with autocast_ctx:
-            x, y = _get_batch(tokens_tensor, cfg.training.block_size, cfg.training.batch_size, device)
+            if tokens_tensor is not None:
+                x, y = _get_batch(tokens_tensor, cfg.training.block_size, cfg.training.batch_size, device)
+            else:
+                batch = cycling_loader.next().to(device)
+                if batch.dim() != 2:
+                    raise ValueError("Streaming batches must be 2D tensors")
+                if batch.size(1) <= 1:
+                    continue
+                x = batch[:, :-1]
+                y = batch[:, 1:]
             logits, loss = model(x, y)
         if loss is None:
             raise RuntimeError("Loss should not be None during training")
@@ -146,7 +164,11 @@ def train_language_model(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.training.grad_clip)
             optimizer.step()
 
-        total_tokens_processed += cfg.training.batch_size * cfg.training.block_size
+        if tokens_tensor is not None:
+            total_tokens_processed += cfg.training.batch_size * cfg.training.block_size
+        else:
+            total_tokens_processed += x.size(0) * x.size(1)
+            train_tokens = total_tokens_processed
 
         if (step + 1) % cfg.training.log_interval == 0 or step == 0:
             elapsed = time.time() - start_time

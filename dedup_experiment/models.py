@@ -107,7 +107,7 @@ class SimpleGPT(nn.Module):
         logits = self.lm_head(x)
         loss = None
         if targets is not None:
-            loss = nn.functional.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+            loss = nn.functional.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
         return logits, loss
 
 
