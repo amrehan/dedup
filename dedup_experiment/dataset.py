@@ -17,6 +17,7 @@ class ChunkShardDataset(IterableDataset):
         manifest_path: str | Path,
         block_size: int,
         drop_ids: Optional[set[tuple[int, int]]] = None,
+        drop_path: Optional[str | Path] = None,
     ) -> None:
         self.manifest_path = Path(manifest_path)
         if self.manifest_path.is_dir():
@@ -27,7 +28,24 @@ class ChunkShardDataset(IterableDataset):
             manifest = json.load(handle)
         self.shards: List[dict] = manifest["shards"]
         self.block_size = block_size
-        self.drop_ids = drop_ids or set()
+        if drop_ids is not None:
+            self.drop_ids = drop_ids
+        elif drop_path is not None:
+            self.drop_ids = self._load_drop_ids(drop_path)
+        else:
+            self.drop_ids = set()
+
+    @staticmethod
+    def _load_drop_ids(path: str | Path) -> Set[Tuple[int, int]]:
+        drop_set: Set[Tuple[int, int]] = set()
+        path = Path(path)
+        if not path.exists():
+            return drop_set
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                data = json.loads(line)
+                drop_set.add((data["shard_id"], data["local_index"]))
+        return drop_set
 
     def __iter__(self) -> Iterator[torch.Tensor]:
         for shard_meta in self.shards:

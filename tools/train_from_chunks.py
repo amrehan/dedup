@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train model from chunk shards")
     parser.add_argument("--config", required=True, help="Path to config YAML")
     parser.add_argument("--chunks", required=True, help="Directory containing shard manifest")
+    parser.add_argument("--drop", required=False, help="Path to drop list JSONL")
     parser.add_argument("--output", required=False, help="Override output directory")
     return parser.parse_args()
 
@@ -31,7 +32,7 @@ def main() -> None:
     cfg = load_config(args.config)
     if args.output:
         cfg.output_dir = args.output
-    dataset = ChunkShardDataset(args.chunks, block_size=cfg.training.block_size)
+    dataset = ChunkShardDataset(args.chunks, block_size=cfg.training.block_size, drop_path=args.drop)
     dataloader = DataLoader(
         dataset,
         batch_size=cfg.training.batch_size,

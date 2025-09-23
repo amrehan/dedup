@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Streaming chunk builder (`dedup_experiment/chunker.py`) and CLI helpers (`tools/build_chunks.py`, `tools/train_from_chunks.py`) to write chunk shards to disk and train via an iterable dataset.
+- `ChunkShardDataset` iterable loader and optional streaming support in the trainer so we can iterate over shard files without materialising entire corpora.
+- Disk-backed dedup pipeline (`dedup_experiment/dedup_stream.py`) and `tools/run_dedup.py` for generating drop lists from chunk metadata.
 
 ## [0.3.1] - 2025-09-22
 ### Added

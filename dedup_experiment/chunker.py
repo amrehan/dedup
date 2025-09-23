@@ -14,7 +14,7 @@ from transformers import AutoTokenizer
 from tqdm.auto import tqdm
 
 from .config import ExperimentConfig
-from .utils import normalize_text, chunk_tokens
+from .utils import normalize_text, chunk_tokens, shingle_text
 
 
 @dataclass
@@ -42,11 +42,14 @@ class ChunkShardWriter:
         self._buffer_hashes: List[int] = []
         self._buffer_lengths: List[int] = []
         self._buffer_doc_ids: List[int] = []
+        self._buffer_shingles: List[List[int]] = []
         self._shard_metadatas: List[ShardMetadata] = []
         self._total_tokens = 0
         self._shard_id = 0
         self._chunk_meta_path = self.output_dir / "chunks.jsonl"
         self._chunk_meta_file = self._chunk_meta_path.open("w", encoding="utf-8")
+        self._shingle_path = self.output_dir / "shingles.jsonl"
+        self._shingle_file = self._shingle_path.open("w", encoding="utf-8")
 
     @staticmethod
     def _hash_text(text: str) -> int:
@@ -73,11 +76,11 @@ class ChunkShardWriter:
             {
                 "tokens": tensor_tokens,
                 "hashes": torch.tensor(self._buffer_hashes, dtype=torch.int64),
-                "lengths": torch.tensor(self._buffer_lengths, dtype=torch.int32),
-                "doc_ids": torch.tensor(self._buffer_doc_ids, dtype=torch.int64),
-            },
-            shard_path,
-        )
+            "lengths": torch.tensor(self._buffer_lengths, dtype=torch.int32),
+            "doc_ids": torch.tensor(self._buffer_doc_ids, dtype=torch.int64),
+        },
+        shard_path,
+    )
         chunk_count = len(self._buffer_tokens)
         token_count = sum(self._buffer_lengths)
         shard_meta = ShardMetadata(
@@ -87,7 +90,9 @@ class ChunkShardWriter:
             token_count=token_count,
         )
         self._shard_metadatas.append(shard_meta)
-        for local_idx, (length, h) in enumerate(zip(self._buffer_lengths, self._buffer_hashes)):
+        for local_idx, (length, h, shingles) in enumerate(
+            zip(self._buffer_lengths, self._buffer_hashes, self._buffer_shingles)
+        ):
             meta = ChunkMetadata(
                 shard_id=self._shard_id,
                 local_index=local_idx,
@@ -95,20 +100,32 @@ class ChunkShardWriter:
                 exact_hash=h,
             )
             self._chunk_meta_file.write(json.dumps(asdict(meta)) + "\n")
+            self._shingle_file.write(
+                json.dumps({
+                    "shard_id": self._shard_id,
+                    "local_index": local_idx,
+                    "shingles": shingles,
+                })
+                + "\n"
+            )
         self._total_tokens += token_count
         self._buffer_tokens.clear()
         self._buffer_hashes.clear()
         self._buffer_lengths.clear()
         self._buffer_doc_ids.clear()
+        self._buffer_shingles.clear()
         self._shard_id += 1
 
     def finalize(self) -> Dict[str, List[Dict]]:
         self._flush()
         self._chunk_meta_file.flush()
         self._chunk_meta_file.close()
+        self._shingle_file.flush()
+        self._shingle_file.close()
         manifest = {
             "shards": [asdict(meta) for meta in self._shard_metadatas],
             "chunk_metadata_path": str(self._chunk_meta_path),
+            "shingle_path": str(self._shingle_path),
             "total_tokens": self._total_tokens,
         }
         manifest_path = self.output_dir / "manifest.json"
@@ -146,10 +163,13 @@ def stream_and_chunk(cfg: ExperimentConfig, output_dir: str, shard_size: int = 1
             continue
         normalized_doc = normalize_text(text)
         token_ids = tokenizer.encode(normalized_doc)
+        shingles_doc = shingle_text(normalized_doc, cfg.dedup.near.shingle_size)
         for chunk in chunk_tokens(token_ids, cfg.dedup.chunk_tokens, cfg.dedup.stride_tokens):
             if len(chunk) < cfg.dedup.min_chunk_tokens:
                 continue
             normalized_chunk = normalize_text(tokenizer.decode(chunk))
+            shingles = shingle_text(normalized_chunk, cfg.dedup.near.shingle_size)
+            writer._buffer_shingles.append(shingles)
             writer.add_chunk(chunk, doc_id=idx, normalized_text=normalized_chunk)
             chunk_tokens_count += len(chunk)
     manifest = writer.finalize()

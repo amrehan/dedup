@@ -76,10 +76,17 @@ You can also set `training.device: cpu` for force-CPU smoke tests.
 
 ### Scaling up
 
-For deeper runs, start from `configs/full_sample10b.yaml`:
+Larger runs stream chunks to disk and train from them. The workflow is:
 
 ```bash
-python run_experiment.py --config configs/full_sample10b.yaml --output outputs/full_run
+# 1) build chunk shards
+python tools/build_chunks.py --config configs/full_sample10b.yaml --output chunk_shards
+
+# 2) run dedup to generate a drop list
+python tools/run_dedup.py --config configs/full_sample10b.yaml --chunks chunk_shards --output chunk_shards/drop.jsonl
+
+# 3) train using the streamed dataset
+python tools/train_from_chunks.py --config configs/full_sample10b.yaml --chunks chunk_shards --drop chunk_shards/drop.jsonl --output outputs/full_run
 ```
 
 Key differences vs. the smoke test:
@@ -89,7 +96,7 @@ Key differences vs. the smoke test:
 - Trains an 8-layer GPT (dmodel=512, bf16) for 16k steps at batch size 64 (≈500M tokens).
 - Expands evaluation to 1k PIQA/HellaSwag prompts and 500 Lambada samples.
 
-Adjust `max_train_tokens`, `batch_size`, or `max_steps` to fit your compute budget, and expect the full run to require multiple A100-class GPUs.
+Adjust `max_train_tokens`, `batch_size`, or `max_steps` to fit your compute budget. The chunk/dedup steps are embarrassingly parallel; expect to need multiple A100-class GPUs for the training phase.
 
 ## Notes & tips
 
