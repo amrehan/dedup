@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streaming chunk builder (`dedup_experiment/chunker.py`) and CLI helpers (`tools/build_chunks.py`, `tools/train_from_chunks.py`) to write chunk shards to disk and train via an iterable dataset.
 - `ChunkShardDataset` iterable loader and optional streaming support in the trainer so we can iterate over shard files without materialising entire corpora.
 - Disk-backed dedup pipeline (`dedup_experiment/dedup_stream.py`) and `tools/run_dedup.py` for generating drop lists from chunk metadata.
+- CLI path resolver that honours a `DEDUP_WORKDIR` environment variable so tooling paths relax to Colab Drive, Lambda Workspaces, RunPod mounts, etc.
 
 ### Fixed
 - Ensure streaming chunker records shingles per chunk and flushes metadata correctly so disk-backed dedup no longer re-materialises documents.

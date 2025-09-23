@@ -89,6 +89,17 @@ python tools/run_dedup.py --config configs/full_sample10b.yaml --chunks chunk_sh
 python tools/train_from_chunks.py --config configs/full_sample10b.yaml --chunks chunk_shards --drop chunk_shards/drop.jsonl --output outputs/full_run
 ```
 
+Tip: set `DEDUP_WORKDIR` to aim all relative CLI paths at a mounted volume (e.g.,
+Colab Drive, Lambda Workspaces, RunPod). With the environment variable exported,
+the commands above can be simplified:
+
+```bash
+export DEDUP_WORKDIR=/workspace/dedup
+python tools/build_chunks.py --config configs/full_sample10b.yaml --output chunks
+python tools/run_dedup.py --config configs/full_sample10b.yaml --chunks chunks --output drop.jsonl
+python tools/train_from_chunks.py --config configs/full_sample10b.yaml --chunks chunks --drop drop.jsonl --output outputs/full_run
+```
+
 Key differences vs. the smoke test:
 
 - Streams the `sample-10B` subset (≈10B tokens) with 96/2/2 train/val/test split.

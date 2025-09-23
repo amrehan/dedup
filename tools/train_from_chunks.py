@@ -16,6 +16,7 @@ from transformers import AutoTokenizer
 from dedup_experiment.config import load_config
 from dedup_experiment.dataset import ChunkShardDataset, CyclingDataLoader
 from dedup_experiment.train import train_language_model
+from tools._cli import resolve_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,9 +31,19 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
+
+    chunks_path = resolve_path(args.chunks)
+    drop_path = resolve_path(args.drop) if args.drop else None
     if args.output:
-        cfg.output_dir = args.output
-    dataset = ChunkShardDataset(args.chunks, block_size=cfg.training.block_size, drop_path=args.drop)
+        output_dir = resolve_path(args.output)
+        cfg.output_dir = str(output_dir)
+    else:
+        output_dir = resolve_path(cfg.output_dir)
+        cfg.output_dir = str(output_dir)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    dataset = ChunkShardDataset(str(chunks_path), block_size=cfg.training.block_size, drop_path=str(drop_path) if drop_path else None)
     dataloader = DataLoader(
         dataset,
         batch_size=cfg.training.batch_size,
@@ -52,7 +63,7 @@ def main() -> None:
         cfg=cfg,
         tokenizer_vocab_size=len(tokenizer),
         eos_token_id=tokenizer.eos_token_id,
-        output_dir=Path(cfg.output_dir),
+        output_dir=output_dir,
         cycling_loader=cycling_loader,
         device=device,
     )

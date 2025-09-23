@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
 
 from dedup_experiment.config import load_config
 from dedup_experiment.chunker import stream_and_chunk
+from tools._cli import resolve_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,8 +26,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
-    manifest = stream_and_chunk(cfg, args.output, shard_size=args.shard_size)
-    summary_path = Path(args.output) / "build_summary.json"
+    output_dir = resolve_path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    manifest = stream_and_chunk(cfg, str(output_dir), shard_size=args.shard_size)
+    summary_path = output_dir / "build_summary.json"
     with summary_path.open("w", encoding="utf-8") as handle:
         json.dump(manifest, handle, indent=2)
     print(f"Wrote shards to {args.output}")

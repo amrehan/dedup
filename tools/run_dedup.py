@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
 
 from dedup_experiment.config import load_config
 from dedup_experiment.dedup_stream import exact_dedup, near_dedup, write_drop_ids
+from tools._cli import resolve_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,7 +26,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
-    manifest_path = Path(args.chunks) / "manifest.json"
+    chunks_dir = resolve_path(args.chunks)
+    manifest_path = chunks_dir / "manifest.json"
     with manifest_path.open("r", encoding="utf-8") as handle:
         manifest = json.load(handle)
     chunk_meta_path = manifest["chunk_metadata_path"]
@@ -34,7 +36,9 @@ def main() -> None:
     drop_exact, stats_exact = exact_dedup(chunk_meta_path)
     drop_near, stats_near = near_dedup(shingle_path, cfg)
     drop_ids = drop_exact | drop_near
-    write_drop_ids(drop_ids, args.output)
+    output_path = resolve_path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    write_drop_ids(drop_ids, output_path)
 
     summary = {
         "exact": stats_exact.__dict__,
