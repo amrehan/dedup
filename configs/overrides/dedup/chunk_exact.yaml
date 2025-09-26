@@ -1,0 +1,10 @@
+output_dir: runs/chunk_exact
+report_file: runs/chunk_exact/report.json
+table_file: runs/chunk_exact/summary.tsv
+
+dedup:
+  chunk_tokens: 1024
+  stride_tokens: 1024
+  min_chunk_tokens: 256
+  near:
+    enabled: false

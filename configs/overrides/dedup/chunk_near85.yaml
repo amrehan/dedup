@@ -1,0 +1,15 @@
+output_dir: runs/chunk_near85
+report_file: runs/chunk_near85/report.json
+table_file: runs/chunk_near85/summary.tsv
+
+dedup:
+  chunk_tokens: 1024
+  stride_tokens: 1024
+  min_chunk_tokens: 256
+  near:
+    enabled: true
+    shingle_size: 5
+    num_permutations: 128
+    band_size: 4
+    threshold: 0.85
+    skip_short_tokens: 256

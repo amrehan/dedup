@@ -1,0 +1,4 @@
+host: url_host
+language: language
+quality: quality_bin
+doc_length: num_tokens

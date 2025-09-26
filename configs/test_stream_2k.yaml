@@ -1,0 +1,75 @@
+seed: 42
+output_dir: outputs
+report_file: outputs/report.json
+table_file: outputs/summary.tsv
+num_canaries: 10
+canary_length: 16
+canary_prefix: CANARY
+
+dataset:
+  name: togethercomputer/RedPajama-Data-V2
+  subset: sample
+  split: train
+  text_field: text
+  max_documents: 2000
+  streaming: false
+  train_fraction: 0.9
+  val_fraction: 0.05
+  test_fraction: 0.05
+  shuffle_seed: 13
+  shuffle_buffer: 4000
+
+dedup:
+  chunk_tokens: 64
+  stride_tokens: 64
+  min_chunk_tokens: 32
+  lowercase: true
+  strip_html: true
+  collapse_whitespace: true
+  cross_split: true
+  near:
+    enabled: true
+    shingle_size: 5
+    num_permutations: 64
+    band_size: 4
+    threshold: 0.85
+    skip_short_tokens: 120
+
+training:
+  block_size: 64
+  n_layer: 2
+  n_head: 2
+  n_embd: 128
+  dropout: 0.1
+  lr: 0.0001
+  weight_decay: 0.1
+  betas: [0.9, 0.95]
+  grad_clip: 1.0
+  batch_size: 8
+  max_steps: 50
+  warmup_steps: 10
+  log_interval: 10
+  device: auto
+  precision: fp32
+  max_train_tokens: 50000
+  save_checkpoints: false
+
+evaluation:
+  val_batch_size: 8
+  max_val_tokens: 32768
+  downstream_tasks:
+    lambada_openai: 20
+    piqa: 50
+    hellaswag: 50
+  canary_prompts: 20
+  canary_decode_max_tokens: 16
+
+runs:
+  - name: no_dedup
+    apply_exact: false
+    apply_near: false
+    description: Raw chunks
+  - name: exact
+    apply_exact: true
+    apply_near: false
+    description: Exact hash dedup
