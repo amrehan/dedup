@@ -7,10 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Nothing yet.
+
+### Changed
+- Nothing yet.
+
+### Fixed
+- Nothing yet.
+
+## [0.4.0] - 2025-09-26
+### Added
 - Streaming chunk builder (`dedup_experiment/chunker.py`) and CLI helpers (`tools/build_chunks.py`, `tools/train_from_chunks.py`) to write chunk shards to disk and train via an iterable dataset.
 - `ChunkShardDataset` iterable loader and optional streaming support in the trainer so we can iterate over shard files without materialising entire corpora.
 - Disk-backed dedup pipeline (`dedup_experiment/dedup_stream.py`) and `tools/run_dedup.py` for generating drop lists from chunk metadata.
 - CLI path resolver that honours a `DEDUP_WORKDIR` environment variable so tooling paths relax to Colab Drive, Lambda Workspaces, RunPod mounts, etc.
+- Dataset prefetch support: `DatasetPrefetchConfig` and `prefetch_dataset()` with optional forced download, invoked automatically by the chunk builder; plus `tools/download_dataset.py` helper.
+- Layered config scaffold: `configs/base_gpt2.yaml`, `configs/dataset_fields.yaml`, overrides under `configs/overrides/{dedup,model,tokens}`, and smoke configs (`smoke_lorem.yaml`, `smoke_wikitext.yaml`, `test_stream_{2k,20k}.yaml`).
+- Orchestration and analysis utilities in `tools/`: `analyze_runs.py`, `build_splits.py`, `dedup_doc.py`, `dedup_chunk.py`, `cross_dedup.py`, `compose_config.py`, `build_chunks_mp.py`, `chunk_timing.py`, `profile_run_dedup.py`.
+- Launcher scripts under `scripts/`: `run_pilot.sh`, `launch_grid.py`, `cpu_pipeline.sh`.
+- Smoke tests covering config composition, dedup manifests, analysis helpers, and shared utils.
+
+### Changed
+- Default `streaming: false` in `configs/test_stream.yaml` to make local smoke runs deterministic against the cache.
+- README documentation expanded to describe the experiment contract, layered configs, helper tooling, and dataset prefetch workflow.
 
 ### Fixed
 - Ensure streaming chunker records shingles per chunk and flushes metadata correctly so disk-backed dedup no longer re-materialises documents.
