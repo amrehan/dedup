@@ -3,9 +3,17 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import yaml
+
+
+@dataclass
+class DatasetPrefetchConfig:
+    enabled: bool = False
+    split: Optional[str] = None
+    force_download: bool = False
+    revision: Optional[str] = None
 
 
 @dataclass
@@ -19,9 +27,11 @@ class DatasetConfig:
     shuffle_seed: int = 13
     shuffle_buffer: int = 1000
     local_cache_dir: Optional[str] = None
+    data_files: Optional[Union[Dict, str, List[str]]] = None
     train_fraction: float = 0.98
     val_fraction: float = 0.01
     test_fraction: float = 0.01
+    prefetch: DatasetPrefetchConfig = field(default_factory=DatasetPrefetchConfig)
 
 
 @dataclass

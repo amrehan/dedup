@@ -14,6 +14,7 @@ from transformers import AutoTokenizer
 from tqdm.auto import tqdm
 
 from .config import ExperimentConfig
+from .data import prefetch_dataset
 from .utils import normalize_text, chunk_tokens, shingle_text
 
 
@@ -138,6 +139,7 @@ class ChunkShardWriter:
 def stream_and_chunk(cfg: ExperimentConfig, output_dir: str, shard_size: int = 10000) -> Dict:
     out_dir = Path(output_dir)
     writer = ChunkShardWriter(out_dir, shard_size=shard_size)
+    prefetch_dataset(cfg.dataset)
     dataset = load_dataset(
         cfg.dataset.name,
         cfg.dataset.subset,

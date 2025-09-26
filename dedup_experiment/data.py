@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
-from datasets import IterableDataset, Dataset, load_dataset
+from datasets import Dataset, DownloadMode, IterableDataset, load_dataset
 from transformers import AutoTokenizer
 
 from .config import DatasetConfig, DedupConfig, ExperimentConfig, RunConfig
@@ -40,6 +40,60 @@ def get_hf_token() -> Optional[str]:
     return os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
 
 
+def prefetch_dataset(dataset_cfg: DatasetConfig, *, split_override: Optional[str] = None, force: Optional[bool] = None) -> None:
+    """Ensure the requested dataset split is fully downloaded to the local cache."""
+
+    if not dataset_cfg.prefetch.enabled and split_override is None and force is None:
+        return
+
+    split = split_override or dataset_cfg.prefetch.split or dataset_cfg.split
+    if not split:
+        raise ValueError("Dataset split must be provided for prefetching")
+
+    token = get_hf_token()
+    kwargs = {
+        "streaming": False,
+        "split": split,
+        "trust_remote_code": True,
+    }
+    if token:
+        kwargs["token"] = token
+    if dataset_cfg.local_cache_dir:
+        kwargs["cache_dir"] = dataset_cfg.local_cache_dir
+    if dataset_cfg.data_files is not None:
+        kwargs["data_files"] = dataset_cfg.data_files
+    if dataset_cfg.prefetch.revision:
+        kwargs["revision"] = dataset_cfg.prefetch.revision
+
+    force_download = dataset_cfg.prefetch.force_download if force is None else force
+    download_mode = DownloadMode.FORCE_REDOWNLOAD if force_download else DownloadMode.REUSE_CACHE_IF_EXISTS
+
+    logger.info(
+        "Prefetching %s (subset=%s, split=%s) with download_mode=%s",
+        dataset_cfg.name,
+        dataset_cfg.subset,
+        split,
+        download_mode.name,
+    )
+    try:
+        load_dataset(
+            dataset_cfg.name,
+            dataset_cfg.subset,
+            download_mode=download_mode,
+            **kwargs,
+        )
+    except TypeError:
+        logger.warning("datasets version does not accept trust_remote_code; retrying without it")
+        kwargs.pop("trust_remote_code", None)
+        load_dataset(
+            dataset_cfg.name,
+            dataset_cfg.subset,
+            download_mode=download_mode,
+            **kwargs,
+        )
+    logger.info("Prefetch complete for %s split %s", dataset_cfg.name, split)
+
+
 def load_documents(cfg: DatasetConfig) -> List[str]:
     token = get_hf_token()
     logger.info("Loading %s (subset=%s, split=%s)", cfg.name, cfg.subset, cfg.split)
@@ -48,6 +102,8 @@ def load_documents(cfg: DatasetConfig) -> List[str]:
         kwargs["token"] = token
     if cfg.local_cache_dir:
         kwargs["cache_dir"] = cfg.local_cache_dir
+    if cfg.data_files is not None:
+        kwargs["data_files"] = cfg.data_files
     try:
         dataset = load_dataset(
             cfg.name,

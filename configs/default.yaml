@@ -18,6 +18,11 @@ dataset:
   test_fraction: 0.05
   shuffle_seed: 13
   shuffle_buffer: 2000
+  prefetch:
+    enabled: false
+    split:
+    force_download: false
+    revision:
 
 dedup:
   chunk_tokens: 512
