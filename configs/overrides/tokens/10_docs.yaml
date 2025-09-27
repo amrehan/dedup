@@ -1,0 +1,7 @@
+dataset:
+  max_documents: 100
+  streaming: false
+  prefetch:
+    enabled: true
+    split: train
+    force_download: false
